@@ -42,14 +42,23 @@
             cursor: pointer; 
             font-weight: 600;
             transition: all 0.2s ease;
+            text-align: center;
         }
         .btn-generer { 
             background-color: #2f54eb; 
             color: white; 
             box-shadow: 0 4px 6px -1px rgba(47, 84, 235, 0.2);
+            line-height: 1.2;
         }
         .btn-generer:hover {
             background-color: #1d39c4;
+        }
+        .btn-traduction {
+            font-size: 12px;
+            display: block;
+            font-weight: 400;
+            opacity: 0.85;
+            margin-top: 2px;
         }
         .grille-nombres { 
             display: grid;
@@ -114,80 +123,90 @@
     <div class="sous-titre" id="texte-aide">Cliquez sur un nombre pour voir comment il s'écrit en lettres.</div>
 
     <div class="barre-outils">
-        <button class="btn btn-generer" onclick="genererLesNombres()" id="btn-tirer">🎲 Générer 6 nombres</button>
+        <button class="btn btn-generer" onclick="genererLesNombres()" id="btn-tirer">
+            🎲 Générer 6 nombres
+            <span class="btn-traduction">Generate 6 numbers</span>
+        </button>
     </div>
 
     <div class="grille-nombres" id="zoneNombres"></div>
 
     <script>
-        // --- LOGIQUE DE CONVERSION DES NOMBRES EN LETTRES (Réforme de 1990) ---
-        const unites = ["zéro", "un", "deux", "trois", "quatre", "cinq", "six", "sept", "huit", "neuf", "dix", "onze", "douze", "treize", "quatorze", "quinze", "seize"];
-        const dizaines = ["", "dix", "vingt", "trente", "quarante", "cinquante", "soixante", "", "quatre-vingt", ""];
+        // --- LOGIQUE DE CONVERSION DE NOMBRES FIABLE (RÉFORME DE 1990) ---
+        const unites = ["zéro", "un", "deux", "trois", "quatre", "cinq", "six", "sept", "huit", "neuf", "dix", "onze", "douze", "treize", "quatorze", "quinze", "seize", "dix-sept", "dix-huit", "dix-neuf"];
+        const dizaines = ["", "", "vingt", "trente", "quarante", "cinquante", "soixante", "soixante", "quatre-vingt", "quatre-vingt"];
 
         function convertirEnLettres(n) {
             if (n === 0) return "zéro";
-            return buildNombre(n).replace(/-+/g, '-').replace(/^-|-$/g, '');
+            return buildNombre(n, true); // true = est en fin de mot global
         }
 
-        function buildNombre(n) {
-            if (n < 17) return unites[n];
-            
-            if (n < 20) return "dix-" + unites[n - 10];
-            
-            if (n < 70) {
-                let d = Math.floor(n / 10);
-                let u = n % 10;
-                if (u === 0) return dizaines[d];
-                if (u === 1) return dizaines[d] + "-et-un";
-                return dizaines[d] + "-" + unites[u];
-            }
-            
-            if (n < 80) {
-                let u = n % 10;
-                if (u === 1) return "soixante-et-onze";
-                return "soixante-" + buildNombre(10 + u);
-            }
+        function buildNombre(n, estFin) {
+            if (n < 20) return unites[n];
             
             if (n < 100) {
+                let d = Math.floor(n / 10);
                 let u = n % 10;
-                if (u === 0) return "quatre-vingts"; // Vingt prend un "s" s'il termine
-                return "quatre-vingt-" + buildNombre(10 + u);
+                
+                // Cas particuliers 70-79 et 90-99
+                if (d === 7) {
+                    if (u === 1) return "soixante-et-onze";
+                    return "soixante-" + unites[10 + u];
+                }
+                if (d === 9) {
+                    return "quatre-vingt-" + unites[10 + u];
+                }
+                
+                // Cas général
+                if (u === 0) {
+                    if (d === 8) return estFin ? "quatre-vingts" : "quatre-vingt";
+                    return dizaines[d];
+                }
+                if (u === 1 && d !== 8) {
+                    return dizaines[d] + "-et-un";
+                }
+                return dizaines[d] + "-" + unites[u];
             }
             
             if (n < 1000) {
                 let c = Math.floor(n / 100);
                 let reste = n % 100;
                 let centStr = "";
+                
                 if (c > 1) {
                     centStr = unites[c] + "-cent";
-                    if (reste === 0) centStr += "s"; // Cent prend un "s" s'il termine
+                    if (reste === 0 && estFin) centStr += "s";
                 } else {
                     centStr = "cent";
                 }
+                
                 if (reste === 0) return centStr;
-                return centStr + "-" + buildNombre(reste);
+                return centStr + "-" + buildNombre(reste, estFin);
             }
             
             if (n < 1000000) {
                 let m = Math.floor(n / 1000);
                 let reste = n % 1000;
                 let milleStr = "";
+                
                 if (m > 1) {
-                    milleStr = buildNombre(m) + "-mille"; // Mille est toujours invariable
+                    milleStr = buildNombre(m, false) + "-mille"; // mille n'est jamais suivi d'un s
                 } else {
                     milleStr = "mille";
                 }
+                
                 if (reste === 0) return milleStr;
-                return milleStr + "-" + buildNombre(reste);
+                return milleStr + "-" + buildNombre(reste, estFin);
             }
             
             if (n < 1000000000) {
                 let mil = Math.floor(n / 1000000);
                 let reste = n % 1000000;
-                let milStr = buildNombre(mil) + "-million";
-                if (mil > 1) milStr += "s"; // Million prend un "s" au pluriel
+                let milStr = buildNombre(mil, false) + "-million";
+                if (mil > 1) milStr += "s"; // million prend toujours un s si pluriel
+                
                 if (reste === 0) return milStr;
-                return milStr + "-" + buildNombre(reste);
+                return milStr + "-" + buildNombre(reste, estFin);
             }
             
             if (n === 1000000000) {
@@ -197,7 +216,7 @@
             return n.toString();
         }
 
-        // --- GÉNÉRATION SELON VOS RÈGLES STRUCTURÉES ---
+        // --- GÉNÉRATION PAR CRITÈRES ---
         function entierAleatoire(min, max) {
             return Math.floor(Math.random() * (max - min + 1)) + min;
         }
@@ -223,10 +242,10 @@
             // 1x de 1 000 à 1 000 000 000
             listeNombres.push(entierAleatoire(1000, 1000000000));
 
-            // Mélanger l'ordre d'affichage pour que la distribution ne soit pas prévisible
+            // Mélanger l'ordre des cartes
             listeNombres.sort(() => Math.random() - 0.5);
 
-            // Génération de l'affichage HTML
+            // Rendu HTML
             const zone = document.getElementById("zoneNombres");
             zone.innerHTML = listeNombres.map(num => {
                 let texteLettres = convertirEnLettres(num);
@@ -235,7 +254,7 @@
                 return `
                     <div class="carte-nombre" onclick="basculerCarte(this)">
                         <div class="nombre-chiffre">${affichageChiffre}</div>
-                        <div class="consigne" id="aide-clic">Afficher les lettres</div>
+                        <div class="consigne">Afficher les lettres</div>
                         <div class="nombre-lettres masque">${texteLettres}</div>
                     </div>
                 `;
@@ -255,7 +274,7 @@
             }
         }
 
-        // Lancement initial automatique au chargement
+        // Lancement initial automatique
         genererLesNombres();
     </script>
 </body>
